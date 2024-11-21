@@ -117,6 +117,8 @@ int editorRoadKey(){
 	}
 }
 int getWindowSize(int *rows , int *cols){
+	//Here we get infos about are window size and all
+	//to try and make our UI better and also handle navigation
 	struct winsize ws;
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
 		return -1;
@@ -132,7 +134,6 @@ int getWindowSize(int *rows , int *cols){
 void editorOpen(){
 	char *line = "Hello World!";
 	ssize_t linelen = 13;
-
 	E.row.size = 13;
 	E.row.chars = malloc(linelen +1);
 	memcpy(E.row.chars , line , linelen);
