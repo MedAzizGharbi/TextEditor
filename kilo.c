@@ -11,6 +11,7 @@
 /*** defines ***/
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define KILO_VERSION "0.0.1"
+#define ABUF_INIT {NULL , 0 }
 
 enum editorKey{
 	ARROW_LEFT = 1000,
@@ -24,12 +25,18 @@ enum editorKey{
 	PAGE_DOWN
 };
 /*** data ***/ 
+typedef struct erow{
+	int size;
+	char *chars;
+}erow; //Editor rows
 struct editorConfig {
-	int cx;
+	int cx; //these are for the cursor position
 	int cy;
 	int screenrows;
 	int screencols;
-	struct termios orig_termios;
+	int numrows;
+	erow row;
+	struct termios orig_termios; //This is where we initiate the original terminal
 };
 struct editorConfig E;
 	
@@ -119,12 +126,27 @@ int getWindowSize(int *rows , int *cols){
 	return 0;
 	}
 }
+
+
+/*** file i/o ***/
+void editorOpen(){
+	char *line = "Hello World!";
+	ssize_t linelen = 13;
+
+	E.row.size = 13;
+	E.row.chars = malloc(linelen +1);
+	memcpy(E.row.chars , line , linelen);
+	E.numrows = 1;
+}
+
+
+
 /*** append buffer ***/
+/*** MUST KNOW LINE BY LINE ***/
 struct abuf{
 	char *b;
 	int len;
 };
-#define ABUF_INIT {NULL , 0 }
 void abAppend(struct abuf *ab, const char *s, int len){
 	char *new = realloc(ab->b , ab->len + len);
 	if(new == NULL){
@@ -138,6 +160,7 @@ void abAppend(struct abuf *ab, const char *s, int len){
 void abFree(struct abuf *ab){
 	free(ab->b);
 }
+
 /*** output ***/
 void editorDrawRows(struct abuf *ab){
 	int y;
@@ -233,6 +256,7 @@ void editorProcessKeypress(){
 void initEditor(){
 	E.cx = 0;
 	E.cy = 0;
+	E.numrows = 0;
 	if(getWindowSize(&E.screenrows , &E.screencols) == -1) die("WindowsSize");
 }
 int main(){
