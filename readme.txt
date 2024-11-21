@@ -8,3 +8,7 @@ Learned about keymapping
 
 
 The last thing i reached is " Clear the screen on exit " 
+
+
+Now I am at the 4 the chapter and this is getting really cool with each step
+I am working now on the text viewer and reached the part : "Line Viewe"
