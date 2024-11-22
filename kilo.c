@@ -37,12 +37,13 @@ typedef struct erow{
 	char *chars;
 }erow; //Editor rows
 struct editorConfig {
-	int cx; //these are for the cursor position
-	int cy;
+	int cx; //cursor column position
+	int cy; //cursor row position
 	int screenrows;
 	int screencols;
 	int numrows;
-	erow row;
+	erow *row; // Making E.row an array of erow
+	int rowoff;
 	struct termios orig_termios; //This is where we initiate the original terminal
 };
 struct editorConfig E;
@@ -136,24 +137,30 @@ int getWindowSize(int *rows , int *cols){
 	}
 }
 
+/*** row operations ***/
+void editorAppendRow(char *s , size_t len){
+	E.row = realloc(E.row , sizeof(erow) * (E.numrows + 1));
+	
+	int at = E.numrows;
+	E.row[at].size = len;
+	E.row[at].chars = malloc(len + 1);
+	memcpy(E.row[at].chars , s, len);
+	E.row[at].chars[len] = '\O';
+	E.numrows++;
+}
+
 
 /*** file i/o ***/
 void editorOpen(char *filename){
 	FILE *fp = fopen(filename,"r");
 	if(!fp) die("fopon");
-
 	char *line = NULL; 
 	size_t linecap = 0;
 	ssize_t linelen;
-	linelen = getline(&line, &linecap, fp); //Get line is usefull for reading lines from a file and it takes care of memory management
-	if(linelen != -1){
-		while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
+	while((linelen = getline(&line, &linecap, fp)) != -1){
+	while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
 			linelen--;
-	E.row.size = linelen;
-	E.row.chars = malloc(linelen +1);
-	memcpy(E.row.chars , line , linelen);
-	E.row.chars[linelen] = '\0';
-	E.numrows = 1;
+	editorAppendRow(line , linelen);
 	}
 	free(line);
 	fclose(fp);
@@ -169,10 +176,7 @@ struct abuf{
 };
 void abAppend(struct abuf *ab, const char *s, int len){
 	char *new = realloc(ab->b , ab->len + len);
-	if(new == NULL){
-		fprintf(stderr, "Failed to reallocate memory! Current size: %d bytes, Trying to allocate: %d bytes\n", ab->len, len);
-		die("Failed to reallocate memory!");
-	}
+	if(new == NULL) return;
 	memcpy(&new[ab->len], s, len);
 	ab->b = new;
 	ab->len += len;
@@ -182,9 +186,18 @@ void abFree(struct abuf *ab){
 }
 
 /*** output ***/
+void editorScroll(){
+	if(E.cy < E.rowoff){
+		E.rowoff = E.cy;
+	}
+	if(E.cy  >= E.rowoff + E.screenrows){
+		E.rowoff = E.cy + E.screenrows + 1;
+	} 
+}
 void editorDrawRows(struct abuf *ab){
 	int y;
 	for(y = 0 ; y < E.screenrows; y++){
+		int filerow = y + E.rowoff;
 		if(y>=E.numrows){
 		if(E.numrows == 0 && y == E.screenrows / 3){ // if we load a file => then we have rows so we dont display the welcome message
 			char welcome[80];
@@ -202,10 +215,10 @@ void editorDrawRows(struct abuf *ab){
 			abAppend(ab, "~" , 1);
 		}
 		}
-		 else {
-			int len = E.row.size;
+		else {
+			int len = E.row[filerow].size;
 			if( len > E.screencols ) len = E.screencols;
-			abAppend(ab , E.row.chars , len);
+			abAppend(ab , E.row[filerow].chars , len);
 		}
 		abAppend(ab, "\x1b[K", 3);
 		if(y < E.screenrows - 1){
@@ -214,8 +227,9 @@ void editorDrawRows(struct abuf *ab){
 	}
 }
 void editorRefreshScreen(){
+	editorScroll();
 	struct abuf ab = ABUF_INIT;
-
+	
 	abAppend(&ab, "\x1b[?25l", 6);
         abAppend(&ab, "\x1b[H", 3);
 
@@ -244,7 +258,7 @@ void editorMoveCursor(int key){
 		if(E.cy != 0) {E.cy--;}
 		break;
 		case ARROW_DOWN:
-		if(E.cy != E.screenrows - 1) {E.cy++;}
+		if(E.cy < E.numrows) {E.cy++;}
 		break;
 	}
 }
@@ -284,6 +298,8 @@ void initEditor(){
 	E.cx = 0;
 	E.cy = 0;
 	E.numrows = 0;
+	E.row = NULL;
+	E.rowoff = 0;
 	if(getWindowSize(&E.screenrows , &E.screencols) == -1) die("WindowsSize");
 }
 int main(int argc , char *argv[]){
