@@ -1,15 +1,15 @@
-#Introduction
+# Introduction
 This is a terminal based text editor made using C.
 It was made following the tutorial made by [snaptoken](https://github.com/snaptoken)
 you can find it [here](https://github.com/snaptoken/kilo-tutorial).
 This is an unfinished product.
-#Usage
+## Usage
 ```bash
     cd TextEditor
     make
     ./kilo
 ```
-#License
+## License
 The kilo source code contained was originally written by Salvatore Sanfilippo (aka antirez) and [released](https://github.com/antirez/kilo) under the BSD 2-clause license. 
 Copyright (c) 2016, Salvatore Sanfilippo <antirez at gmail dot com>
 
